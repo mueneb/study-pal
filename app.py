@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, request, url_for
-from database import init_db, get_db
+from database import init_db, get_db, get_stats
 
 app = Flask(__name__)
 
@@ -7,7 +7,8 @@ init_db()
 
 @app.route("/")
 def index():
-    return "Study Tracker is running!"
+    stats = get_stats()
+    return render_template("index.html", stats=stats)
 
 @app.route("/log", methods=["GET", "POST"])
 def log_session():

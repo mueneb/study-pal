@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Study Tracker</title>
+</head>
+<body>
+    <h1>Dashboard</h1>
+
+    <div>
+        <h2>Overview</h2>
+        <p>Total study time: <strong>{{ stats.total }} mins</strong></p>
+        <p>This week: <strong>{{ stats.weekly_total }} mins</strong></p>
+        <p>Current streak: <strong>{{ stats.current_streak }} days</strong></p>
+        <p>Longest streak: <strong>{{ stats.longest_streak }} days</strong></p>
+    </div>
+
+    <div>
+        <h2>This week by subject</h2>
+        {% if stats.weekly_by_subject %}
+        <table border="1" cellpadding="8">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Duration (mins)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in stats.weekly_by_subject %}
+                <tr>
+                    <td>{{ row["subject"] }}</td>
+                    <td>{{ row["total"] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>No sessions this week yet.</p>
+        {% endif %}
+    </div>
+
+    <br>
+    <a href="/log">Log a session</a> |
+    <a href="/history">View history</a>
+</body>
+</html>

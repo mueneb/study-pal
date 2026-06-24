@@ -56,4 +56,37 @@ def get_streaks():
             running = 1
 
     return current_streak, longest_streak
+def get_stats():
+    conn = get_db()
+
+     # Total study time (all time)
+    total = conn.execute(
+         "SELECT SUM(duration) as total FROM study_sessions"
+        ).fetchone()["total"] or 0
+    
+    # Study time this week
+    weekly_total = conn.execute(
+        """SELECT SUM(duration) as total FROM study_sessions
+        WHERE created_at >= DATE('now', '-6 days')"""
+    ).fetchone()["total"] or 0
+
+    # Weekly time broken down by subject
+    weekly_by_subject = conn.execute(
+        """SELECT subject, SUM(duration) as total FROM study_sessions
+        WHERE created_at >= DATE('now', '-6 days')
+        GROUP BY subject
+        ORDER BY total DESC"""
+    ).fetchall()
+
+    conn.close()
+
+    current_streak, longest_streak = get_streaks()
+
+    return {
+        "total": total,
+        "weekly_total": weekly_total,
+        "weekly_by_subject": weekly_by_subject,
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+    }
 
