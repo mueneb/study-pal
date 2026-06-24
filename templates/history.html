@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Session History</title>
+</head>
+<body>
+    <h1>Study Session History</h1>
+
+    <a href="/log">Log a new session</a>
+
+    {% if sessions %}
+    <table border="1" cellpadding="8" style="margin-top: 20px;">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Duration (mins)</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td>{{ session["subject"] }}</td>
+                <td>{{ session["duration"] }}</td>
+                <td>{{ session["created_at"] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No sessions logged yet. <a href="/log">Log your first one!</a></p>
+    {% endif %}
+
+    <br>
+    <a href="/">Back to home</a>
+</body>
+</html>
