@@ -13,9 +13,52 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             subject TEXT NOT NULL,
             duration INTEGER NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            xp_earned INTEGER DEFAULT 0
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_stats (
+            id INTEGER PRIMARY KEY,
+            xp INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1,
+            streak_freezes INTEGER DEFAULT 0
+        )
+    """)
+
+    conn.execute("""
+        INSERT OR IGNORE INTO user_stats (id, xp, level, streak_freezes)
+        VALUES (1, 0, 1, 0)
+    """)
+
+    #Achievements table
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS achievements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT NOT NULL,
+        unlocked_at DATETIME DEFAULT NULL
+    )
+    """)
+    # Seed all achievements
+    achievements = [
+    ("First Session", "Log your first study session"),
+    ("5 Hours Studied", "Study for a total of 5 hours"),
+    ("10 Hours Studied", "Study for a total of 10 hours"),
+    ("50 Hours Studied", "Study for a total of 50 hours"),
+    ("100 Hours Studied", "Study for a total of 100 hours"),
+    ("7-Day Streak", "Achieve a 7 day streak"),
+    ("30-Day Streak", "Achieve a 30 day streak"),
+    ("First Past Paper", "Complete your first past paper"),
+    ("10 Past Papers", "Complete 10 past papers"),
+    ("50 Past Papers", "Complete 50 past papers"),
+    ]
+
+    for name, description in achievements:
+        conn.execute(
+        "INSERT OR IGNORE INTO achievements (name, description) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM achievements WHERE name = ?)",
+        (name, description, name)
+        )
 
     conn.commit()
     conn.close()
@@ -90,3 +133,101 @@ def get_stats():
         "longest_streak": longest_streak,
     }
 
+def get_user_stats():
+    conn = get_db()
+
+    stats = conn.execute(
+    "SELECT * FROM user_stats WHERE id = 1"
+    ).fetchone()
+    conn.close()
+    return stats
+
+def add_xp(minutes):
+    xp_earned = minutes
+    conn = get_db()
+    conn.execute(
+        "UPDATE user_stats SET xp = xp + ? WHERE id = 1",
+        (xp_earned,)
+    )
+    
+    # Recalculate level
+    new_xp = conn.execute(
+        "SELECT xp FROM user_stats WHERE id = 1"
+    ).fetchone()["xp"]
+    new_level = get_level(new_xp)
+    conn.execute(
+        "UPDATE user_stats SET level = ? WHERE id = 1",
+        (new_level,)
+    )
+    
+    conn.commit()
+    conn.close()
+    return xp_earned
+
+LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2100, 2800, 3600, 4500]
+
+def get_level(xp):
+    level = 1
+    for i, threshold in enumerate(LEVEL_THRESHOLDS):
+        if xp>=threshold:
+            level = i + 1
+    return level
+
+def get_xp_progress(xp):
+    level = get_level(xp)
+    current_threshold = LEVEL_THRESHOLDS[level - 1]
+
+    #if max level
+    if level>= len(LEVEL_THRESHOLDS):
+        return level, xp, xp, 100
+    
+    next_threshold = LEVEL_THRESHOLDS[level]
+    xp_into_level = xp - current_threshold
+    xp_needed = next_threshold - current_threshold
+    percentage = int((xp_into_level/xp_needed)*100)
+
+    return level, xp_into_level, xp_needed, percentage
+
+def check_achievements():
+    conn = get_db()
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Total minutes studied
+    total_minutes = conn.execute(
+        "SELECT SUM(duration) as total FROM study_sessions"
+    ).fetchone()["total"] or 0
+    total_hours = total_minutes / 60
+
+    # Total sessions
+    total_sessions = conn.execute(
+        "SELECT COUNT(*) as count FROM study_sessions"
+    ).fetchone()["count"]
+
+    # Current longest streak
+    conn.close()
+    _, longest_streak = get_streaks()
+
+    def unlock(name):
+        conn2 = get_db()
+        conn2.execute(
+            """UPDATE achievements SET unlocked_at = ?
+            WHERE name = ? AND unlocked_at IS NULL""",
+            (now, name)
+        )
+        conn2.commit()
+        conn2.close()
+
+    if total_sessions >= 1:
+        unlock("First Session")
+    if total_hours >= 5:
+        unlock("5 Hours Studied")
+    if total_hours >= 10:
+        unlock("10 Hours Studied")
+    if total_hours >= 50:
+        unlock("50 Hours Studied")
+    if total_hours >= 100:
+        unlock("100 Hours Studied")
+    if longest_streak >= 7:
+        unlock("7-Day Streak")
+    if longest_streak >= 30:
+        unlock("30-Day Streak")

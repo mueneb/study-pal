@@ -1,17 +1,32 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <title>Study Tracker</title>
 </head>
+
 <body>
     <h1>Dashboard</h1>
-
+    
     <div>
         <h2>Overview</h2>
         <p>Total study time: <strong>{{ stats.total }} mins</strong></p>
         <p>This week: <strong>{{ stats.weekly_total }} mins</strong></p>
         <p>Current streak: <strong>{{ stats.current_streak }} days</strong></p>
         <p>Longest streak: <strong>{{ stats.longest_streak }} days</strong></p>
+    </div>
+
+    <div>
+        
+        <h2>Level & XP</h2>
+        <p>Level: <strong>{{ level }}</strong></p>
+        <p>Total XP: <strong>{{ user["xp"] }} XP</strong></p>
+        <p>Progress: {{ xp_into_level }} / {{ xp_needed }} XP ({{ percentage }}%)</p>
+
+        <!-- Simple progress bar -->
+        <div style="background:#ddd; width:300px; height:20px; border-radius:10px;">
+            <div style="background:#4CAF50; width:{{ percentage }}%; height:20px; border-radius:10px;"></div>
+        </div>
     </div>
 
     <div>
@@ -39,7 +54,9 @@
     </div>
 
     <br>
-    <a href="/log">Log a session</a> |
-    <a href="/history">View history</a>
+    <a href="/log">Log a session</a>
+    <a href="/history">View history</a> 
+    <a href="/achievements">Achievements</a>
 </body>
+
 </html>

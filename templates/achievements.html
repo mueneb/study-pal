@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Achievements</title>
+</head>
+<body>
+    <h1>Achievements</h1>
+
+    {% for a in achievements %}
+    <div style="margin-bottom: 12px; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+        {% if a["unlocked_at"] %}
+            <strong>✅ {{ a["name"] }}</strong>
+            <p>{{ a["description"] }}</p>
+            <small>Unlocked: {{ a["unlocked_at"] }}</small>
+        {% else %}
+            <strong>🔒 {{ a["name"] }}</strong>
+            <p style="color: #999;">{{ a["description"] }}</p>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <br>
+    <a href="/">Back to dashboard</a>
+</body>
+</html>
