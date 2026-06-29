@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Past Papers</title>
+</head>
+<body>
+    <h1>Past Papers</h1>
+
+    <h2>Log a Paper</h2>
+    <form method="POST">
+        <label>Subject:</label><br>
+        <input type="text" name="subject" placeholder="e.g. Physics" required><br><br>
+
+        <label>Paper Name:</label><br>
+        <input type="text" name="paper_name" placeholder="e.g. 9702/42/O/N/23" required><br><br>
+
+        <label>Score:</label><br>
+        <input type="number" name="score" placeholder="e.g. 47" min="0" required><br><br>
+
+        <label>Out of:</label><br>
+        <input type="number" name="max_score" placeholder="e.g. 60" min="1" required><br><br>
+
+        <button type="submit">Save Paper</button>
+    </form>
+
+    <h2>By Subject</h2>
+    {% if by_subject %}
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Papers Completed</th>
+                <th>Average Score</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in by_subject %}
+            <tr>
+                <td>{{ row["subject"] }}</td>
+                <td>{{ row["count"] }}</td>
+                <td>{{ row["avg_percentage"] }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <h2>All Papers</h2>
+    {% if papers %}
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Subject</th>
+                <th>Paper</th>
+                <th>Score</th>
+                <th>Percentage</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for paper in papers %}
+            <tr>
+                <td>{{ paper["subject"] }}</td>
+                <td>{{ paper["paper_name"] }}</td>
+                <td>{{ paper["score"] }} / {{ paper["max_score"] }}</td>
+                <td>{{ "%.1f"|format(paper["score"] / paper["max_score"] * 100) }}%</td>
+                <td>{{ paper["completed_at"] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No papers logged yet.</p>
+    {% endif %}
+
+    <br>
+    <a href="/">Back to dashboard</a>
+</body>
+</html>

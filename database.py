@@ -1,10 +1,12 @@
 import sqlite3
 from datetime import datetime, timedelta
 
+
 def get_db():
     conn = sqlite3.connect("study.db")
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def init_db():
     conn = get_db()
@@ -31,7 +33,7 @@ def init_db():
         VALUES (1, 0, 1, 0)
     """)
 
-    #Achievements table
+    # Achievements table
     conn.execute("""
     CREATE TABLE IF NOT EXISTS achievements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -40,28 +42,42 @@ def init_db():
         unlocked_at DATETIME DEFAULT NULL
     )
     """)
+
+    # past papers table
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS past_papers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject TEXT NOT NULL,
+        paper_name TEXT NOT NULL,
+        score INTEGER NOT NULL,
+        max_score INTEGER NOT NULL,
+        completed_at DATE DEFAULT CURRENT_DATE
+    )
+""")
+
     # Seed all achievements
     achievements = [
-    ("First Session", "Log your first study session"),
-    ("5 Hours Studied", "Study for a total of 5 hours"),
-    ("10 Hours Studied", "Study for a total of 10 hours"),
-    ("50 Hours Studied", "Study for a total of 50 hours"),
-    ("100 Hours Studied", "Study for a total of 100 hours"),
-    ("7-Day Streak", "Achieve a 7 day streak"),
-    ("30-Day Streak", "Achieve a 30 day streak"),
-    ("First Past Paper", "Complete your first past paper"),
-    ("10 Past Papers", "Complete 10 past papers"),
-    ("50 Past Papers", "Complete 50 past papers"),
+        ("First Session", "Log your first study session"),
+        ("5 Hours Studied", "Study for a total of 5 hours"),
+        ("10 Hours Studied", "Study for a total of 10 hours"),
+        ("50 Hours Studied", "Study for a total of 50 hours"),
+        ("100 Hours Studied", "Study for a total of 100 hours"),
+        ("7-Day Streak", "Achieve a 7 day streak"),
+        ("30-Day Streak", "Achieve a 30 day streak"),
+        ("First Past Paper", "Complete your first past paper"),
+        ("10 Past Papers", "Complete 10 past papers"),
+        ("50 Past Papers", "Complete 50 past papers"),
     ]
 
     for name, description in achievements:
         conn.execute(
-        "INSERT OR IGNORE INTO achievements (name, description) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM achievements WHERE name = ?)",
-        (name, description, name)
+            "INSERT OR IGNORE INTO achievements (name, description) SELECT ?, ? WHERE NOT EXISTS (SELECT 1 FROM achievements WHERE name = ?)",
+            (name, description, name),
         )
 
     conn.commit()
     conn.close()
+
 
 def get_streaks():
     conn = get_db()
@@ -124,19 +140,21 @@ def get_streaks():
 
     return current_streak, longest_streak
 
+
 def get_stats():
     conn = get_db()
 
-     # Total study time (all time)
-    total = conn.execute(
-         "SELECT SUM(duration) as total FROM study_sessions"
-        ).fetchone()["total"] or 0
-    
+    # Total study time (all time)
+    total = (
+        conn.execute("SELECT SUM(duration) as total FROM study_sessions").fetchone()[
+            "total"
+        ]
+        or 0
+    )
+
     # Study time this week
-    weekly_total = conn.execute(
-        """SELECT SUM(duration) as total FROM study_sessions
-        WHERE created_at >= DATE('now', '-6 days')"""
-    ).fetchone()["total"] or 0
+    weekly_total = conn.execute("""SELECT SUM(duration) as total FROM study_sessions
+        WHERE created_at >= DATE('now', '-6 days')""").fetchone()["total"] or 0
 
     # Weekly time broken down by subject
     weekly_by_subject = conn.execute(
@@ -158,77 +176,74 @@ def get_stats():
         "longest_streak": longest_streak,
     }
 
+
 def get_user_stats():
     conn = get_db()
 
-    stats = conn.execute(
-    "SELECT * FROM user_stats WHERE id = 1"
-    ).fetchone()
+    stats = conn.execute("SELECT * FROM user_stats WHERE id = 1").fetchone()
     conn.close()
     return stats
+
 
 def add_xp(minutes):
     xp_earned = minutes
     conn = get_db()
-    conn.execute(
-        "UPDATE user_stats SET xp = xp + ? WHERE id = 1",
-        (xp_earned,)
-    )
-    
+    conn.execute("UPDATE user_stats SET xp = xp + ? WHERE id = 1", (xp_earned,))
+
     # Recalculate level
-    new_xp = conn.execute(
-        "SELECT xp FROM user_stats WHERE id = 1"
-    ).fetchone()["xp"]
+    new_xp = conn.execute("SELECT xp FROM user_stats WHERE id = 1").fetchone()["xp"]
     new_level = get_level(new_xp)
-    conn.execute(
-        "UPDATE user_stats SET level = ? WHERE id = 1",
-        (new_level,)
-    )
-    
+    conn.execute("UPDATE user_stats SET level = ? WHERE id = 1", (new_level,))
+
     conn.commit()
     conn.close()
     return xp_earned
 
+
 LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2100, 2800, 3600, 4500]
+
 
 def get_level(xp):
     level = 1
     for i, threshold in enumerate(LEVEL_THRESHOLDS):
-        if xp>=threshold:
+        if xp >= threshold:
             level = i + 1
     return level
+
 
 def get_xp_progress(xp):
     level = get_level(xp)
     current_threshold = LEVEL_THRESHOLDS[level - 1]
 
-    #if max level
-    if level>= len(LEVEL_THRESHOLDS):
+    # if max level
+    if level >= len(LEVEL_THRESHOLDS):
         return level, xp, xp, 100
-    
+
     next_threshold = LEVEL_THRESHOLDS[level]
     xp_into_level = xp - current_threshold
     xp_needed = next_threshold - current_threshold
-    percentage = int((xp_into_level/xp_needed)*100)
+    percentage = int((xp_into_level / xp_needed) * 100)
 
     return level, xp_into_level, xp_needed, percentage
+
 
 def check_achievements():
     conn = get_db()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Total minutes studied
     total_minutes = conn.execute(
         "SELECT SUM(duration) as total FROM study_sessions"
     ).fetchone()["total"] or 0
     total_hours = total_minutes / 60
 
-    # Total sessions
     total_sessions = conn.execute(
         "SELECT COUNT(*) as count FROM study_sessions"
     ).fetchone()["count"]
 
-    # Current longest streak
+    total_papers = conn.execute(
+        "SELECT COUNT(*) as count FROM past_papers"
+    ).fetchone()["count"]
+
     conn.close()
     _, longest_streak = get_streaks()
 
@@ -256,6 +271,12 @@ def check_achievements():
         unlock("7-Day Streak")
     if longest_streak >= 30:
         unlock("30-Day Streak")
+    if total_papers >= 1:
+        unlock("First Past Paper")
+    if total_papers >= 10:
+        unlock("10 Past Papers")
+    if total_papers >= 50:
+        unlock("50 Past Papers")
 
 def buy_streak_freeze():
     conn = get_db()
@@ -278,11 +299,10 @@ def buy_streak_freeze():
     conn.close()
     return True, "Streak freeze purchased!"
 
+
 def apply_streak_freeze():
     conn = get_db()
-    user = conn.execute(
-        "SELECT streak_freezes FROM user_stats WHERE id = 1"
-    ).fetchone()
+    user = conn.execute("SELECT streak_freezes FROM user_stats WHERE id = 1").fetchone()
 
     if user["streak_freezes"] > 0:
         conn.execute(
@@ -291,6 +311,6 @@ def apply_streak_freeze():
         conn.commit()
         conn.close()
         return True
-    
+
     conn.close()
     return False

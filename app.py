@@ -60,6 +60,40 @@ def buy_freeze():
     success, message = buy_streak_freeze()
     return redirect(url_for("index", message=message))
 
+@app.route("/papers", methods=["GET", "POST"])
+def papers():
+    if request.method == "POST":
+        # Handle paper submission logic here
+        subject = request.form["subject"]
+        paper_name = request.form["paper_name"]
+        score = int(request.form["score"])
+        max_score = int(request.form["max_score"])
+
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO past_papers (subject, paper_name, score, max_score) VALUES (?,?,?,?)",
+            (subject, paper_name, score, max_score)
+        )
+
+        conn.commit()
+        conn.close()
+
+        check_achievements()
+        return redirect(url_for("papers"))
+    
+    conn = get_db()
+    all_papers = conn.execute(
+        "SELECT * FROM past_papers ORDER BY completed_at DESC"
+    ).fetchall()
+
+    by_subject = conn.execute(
+        """SELECT subject, COUNT(*) as count,
+        ROUND(AVG(CAST(score AS REAL) / max_score * 100), 1) as avg_percentage
+        FROM past_papers GROUP BY subject"""
+    ).fetchall()
+    conn.close()
+
+    return render_template("papers.html", papers=all_papers, by_subject=by_subject)
 
 if __name__ == "__main__":
     app.run(debug=True)
