@@ -62,32 +62,56 @@ def init_db():
 
     conn.commit()
     conn.close()
+
 def get_streaks():
     conn = get_db()
     rows = conn.execute(
         "SELECT DATE(created_at) as day FROM study_sessions GROUP BY DATE(created_at) ORDER BY day DESC"
     ).fetchall()
     conn.close()
-    
+
     if not rows:
         return 0, 0
 
-    # Convert to a list of date objects
     dates = [datetime.strptime(row["day"], "%Y-%m-%d").date() for row in rows]
 
     today = datetime.today().date()
     yesterday = today - timedelta(days=1)
 
-    # Current streak
-    current_streak = 0
-    if dates[0] == today or dates[0] == yesterday:
-        check = dates[0]
-        for date in dates:
-            if date == check:
-                current_streak += 1
+    # Walk backwards from today and apply freezes to fill single-day gaps
+    check = today if dates[0] == today else yesterday
+    i = 0
+    filled_dates = []
+
+    while i < len(dates):
+        if dates[i] == check:
+            filled_dates.append(dates[i])
+            check -= timedelta(days=1)
+            i += 1
+        elif dates[i] < check:
+            # There's a gap — try to consume a freeze
+            consumed = apply_streak_freeze()
+            if consumed:
+                filled_dates.append(check)
                 check -= timedelta(days=1)
             else:
                 break
+        else:
+            i += 1
+
+    dates = filled_dates
+
+    # Current streak
+    current_streak = 0
+    if dates and (dates[0] == today or dates[0] == yesterday):
+        check_streak = dates[0]
+        for date in dates:
+            if date == check_streak:
+                current_streak += 1
+                check_streak -= timedelta(days=1)
+            else:
+                break
+
     # Longest streak
     longest_streak = 1
     running = 1
@@ -99,6 +123,7 @@ def get_streaks():
             running = 1
 
     return current_streak, longest_streak
+
 def get_stats():
     conn = get_db()
 
@@ -231,3 +256,41 @@ def check_achievements():
         unlock("7-Day Streak")
     if longest_streak >= 30:
         unlock("30-Day Streak")
+
+def buy_streak_freeze():
+    conn = get_db()
+    user = conn.execute(
+        "SELECT xp, streak_freezes FROM user_stats WHERE id = 1"
+    ).fetchone()
+
+    if user["xp"] < 30:
+        conn.close()
+        return False, "Not enough XP. You need 30 XP to buy a streak freeze."
+
+    if user["streak_freezes"] >= 2:
+        conn.close()
+        return False, "You can only hold 2 streak freezes at a time."
+
+    conn.execute(
+        "UPDATE user_stats SET xp = xp - 30, streak_freezes = streak_freezes + 1 WHERE id = 1",
+    )
+    conn.commit()
+    conn.close()
+    return True, "Streak freeze purchased!"
+
+def apply_streak_freeze():
+    conn = get_db()
+    user = conn.execute(
+        "SELECT streak_freezes FROM user_stats WHERE id = 1"
+    ).fetchone()
+
+    if user["streak_freezes"] > 0:
+        conn.execute(
+            "UPDATE user_stats SET streak_freezes = streak_freezes - 1 WHERE id = 1"
+        )
+        conn.commit()
+        conn.close()
+        return True
+    
+    conn.close()
+    return False

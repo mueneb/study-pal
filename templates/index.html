@@ -7,7 +7,7 @@
 
 <body>
     <h1>Dashboard</h1>
-    
+
     <div>
         <h2>Overview</h2>
         <p>Total study time: <strong>{{ stats.total }} mins</strong></p>
@@ -17,7 +17,7 @@
     </div>
 
     <div>
-        
+
         <h2>Level & XP</h2>
         <p>Level: <strong>{{ level }}</strong></p>
         <p>Total XP: <strong>{{ user["xp"] }} XP</strong></p>
@@ -52,10 +52,21 @@
         <p>No sessions this week yet.</p>
         {% endif %}
     </div>
+    <div>
+        <h2>Streak Freeze</h2>
+        <p>Freezes available: <strong>{{ user["streak_freezes"] }}</strong></p>
+        <p>Cost: 30 XP per freeze</p>
+        <form method="POST" action="/buy-freeze">
+            <button type="submit">Buy Streak Freeze</button>
+        </form>
+        {% if message %}
+        <p style="color: green;">{{ message }}</p>
+        {% endif %}
+    </div>
 
     <br>
     <a href="/log">Log a session</a>
-    <a href="/history">View history</a> 
+    <a href="/history">View history</a>
     <a href="/achievements">Achievements</a>
 </body>
 

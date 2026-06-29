@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, request, url_for
-from database import init_db, get_db, get_stats, get_user_stats, add_xp, get_xp_progress, check_achievements
+from database import init_db, get_db, get_stats, get_user_stats, add_xp, get_xp_progress, check_achievements, buy_streak_freeze
 
 app = Flask(__name__)
 
@@ -10,7 +10,8 @@ def index():
     stats = get_stats()
     user = get_user_stats()
     level, xp_into_level, xp_needed, percentage = get_xp_progress(user["xp"])
-    return render_template("index.html", stats=stats, user=user, level=level, xp_into_level=xp_into_level, xp_needed=xp_needed, percentage=percentage)
+    message = request.args.get("message")
+    return render_template("index.html", stats=stats, user=user, level=level, xp_into_level=xp_into_level, xp_needed=xp_needed, percentage=percentage, message=message)
 
 @app.route("/log", methods=["GET", "POST"])
 def log_session():
@@ -53,6 +54,11 @@ def achievements():
     ).fetchall()
     conn.close()
     return render_template("achievements.html", achievements=all_achievements)
+
+@app.route("/buy-freeze", methods=["POST"])
+def buy_freeze():
+    success, message = buy_streak_freeze()
+    return redirect(url_for("index", message=message))
 
 
 if __name__ == "__main__":
