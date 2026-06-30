@@ -53,7 +53,19 @@ def init_db():
         max_score INTEGER NOT NULL,
         completed_at DATE DEFAULT CURRENT_DATE
     )
-""")
+    """)
+
+    # goals table
+    conn.execute("""
+    CREATE TABLE IF NOT EXISTS goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        target INTEGER NOT NULL,
+        deadline DATE NOT NULL,
+        created_at DATE DEFAULT CURRENT_DATE
+    )
+    """)
 
     # Seed all achievements
     achievements = [
@@ -231,18 +243,21 @@ def check_achievements():
     conn = get_db()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    total_minutes = conn.execute(
-        "SELECT SUM(duration) as total FROM study_sessions"
-    ).fetchone()["total"] or 0
+    total_minutes = (
+        conn.execute("SELECT SUM(duration) as total FROM study_sessions").fetchone()[
+            "total"
+        ]
+        or 0
+    )
     total_hours = total_minutes / 60
 
     total_sessions = conn.execute(
         "SELECT COUNT(*) as count FROM study_sessions"
     ).fetchone()["count"]
 
-    total_papers = conn.execute(
-        "SELECT COUNT(*) as count FROM past_papers"
-    ).fetchone()["count"]
+    total_papers = conn.execute("SELECT COUNT(*) as count FROM past_papers").fetchone()[
+        "count"
+    ]
 
     conn.close()
     _, longest_streak = get_streaks()
@@ -252,7 +267,7 @@ def check_achievements():
         conn2.execute(
             """UPDATE achievements SET unlocked_at = ?
             WHERE name = ? AND unlocked_at IS NULL""",
-            (now, name)
+            (now, name),
         )
         conn2.commit()
         conn2.close()
@@ -277,6 +292,7 @@ def check_achievements():
         unlock("10 Past Papers")
     if total_papers >= 50:
         unlock("50 Past Papers")
+
 
 def buy_streak_freeze():
     conn = get_db()
@@ -314,3 +330,40 @@ def apply_streak_freeze():
 
     conn.close()
     return False
+
+def get_goal_progress(goal):
+    conn = get_db()
+    
+    if goal["type"] == "study_time":
+        result = conn.execute(
+            """SELECT SUM(duration) as total FROM study_sessions
+            WHERE subject = ? AND DATE(created_at) <= ?""",
+            (goal["subject"], goal["deadline"])
+        ).fetchone()
+        current = (result["total"] or 0) / 60
+        target = goal["target"]
+        unit = "hrs"
+
+    elif goal["type"] == "past_papers":
+        result = conn.execute(
+            """SELECT COUNT(*) as total FROM past_papers
+            WHERE subject = ? AND completed_at <= ?""",
+            (goal["subject"], goal["deadline"])
+        ).fetchone()
+        current = result["total"] or 0
+        target = goal["target"]
+        unit = "papers"
+
+    conn.close()
+
+    current = min(round(current, 1), target)  # cap at target
+    percentage = min(int((current / target) * 100), 100)
+    days_remaining = (datetime.strptime(goal["deadline"], "%Y-%m-%d").date() - datetime.today().date()).days
+
+    return {
+        "current": current,
+        "target": target,
+        "unit": unit,
+        "percentage": percentage,
+        "days_remaining": days_remaining
+    }

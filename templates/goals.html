@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Goals</title>
+</head>
+<body>
+    <h1>Goals</h1>
+
+    <h2>Create a Goal</h2>
+    <form method="POST">
+        <label>Type:</label><br>
+        <select name="type">
+            <option value="study_time">Study Time (hours)</option>
+            <option value="past_papers">Past Papers</option>
+        </select><br><br>
+
+        <label>Subject:</label><br>
+        <input type="text" name="subject" placeholder="e.g. Physics" required><br><br>
+
+        <label>Target:</label><br>
+        <input type="number" name="target" placeholder="e.g. 100" min="1" required><br><br>
+
+        <label>Deadline:</label><br>
+        <input type="date" name="deadline" required><br><br>
+
+        <button type="submit">Create Goal</button>
+    </form>
+
+    <h2>Active Goals</h2>
+    {% if goals %}
+        {% for item in goals %}
+        <div style="border: 1px solid #ccc; border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+            <h3>{{ item.goal["subject"] }} — 
+                {% if item.goal["type"] == "study_time" %}
+                    Study {{ item.goal["target"] }} hours
+                {% else %}
+                    Complete {{ item.goal["target"] }} papers
+                {% endif %}
+            </h3>
+            <p>Progress: {{ item.progress["current"] }} / {{ item.progress["target"] }} {{ item.progress["unit"] }} ({{ item.progress["percentage"] }}%)</p>
+
+            <div style="background:#ddd; width:300px; height:16px; border-radius:8px;">
+                <div style="background:#4CAF50; width:{{ item.progress['percentage'] }}%; height:16px; border-radius:8px;"></div>
+            </div>
+
+            <p>Deadline: {{ item.goal["deadline"] }} —
+                {% if item.progress["days_remaining"] > 0 %}
+                    {{ item.progress["days_remaining"] }} days remaining
+                {% elif item.progress["days_remaining"] == 0 %}
+                    Due today
+                {% else %}
+                    Expired {{ item.progress["days_remaining"] | abs }} days ago
+                {% endif %}
+            </p>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No goals yet. Create one above!</p>
+    {% endif %}
+
+    <br>
+    <a href="/">Back to dashboard</a>
+</body>
+</html>

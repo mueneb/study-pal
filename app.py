@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, request, url_for
-from database import init_db, get_db, get_stats, get_user_stats, add_xp, get_xp_progress, check_achievements, buy_streak_freeze
+from database import init_db, get_db, get_stats, get_user_stats, add_xp, get_xp_progress, check_achievements, buy_streak_freeze, get_goal_progress
 
 app = Flask(__name__)
 
@@ -94,6 +94,37 @@ def papers():
     conn.close()
 
     return render_template("papers.html", papers=all_papers, by_subject=by_subject)
+
+@app.route("/goals", methods=["GET", "POST"])
+def goals():
+    if request.method == "POST":
+        goal_type = request.form["type"]
+        subject = request.form["subject"]
+        target = int(request.form["target"])
+        deadline = request.form["deadline"]
+
+        conn = get_db()
+        conn.execute(
+            "INSERT INTO goals (type, subject, target, deadline) VALUES (?, ?, ?, ?)",
+            (goal_type, subject, target, deadline)
+        )
+        conn.commit()
+        conn.close()
+
+        return redirect(url_for("goals"))
+
+    conn = get_db()
+    all_goals = conn.execute(
+        "SELECT * FROM goals ORDER BY deadline ASC"
+    ).fetchall()
+    conn.close()
+
+    goals_with_progress = []
+    for goal in all_goals:
+        progress = get_goal_progress(goal)
+        goals_with_progress.append({"goal": goal, "progress": progress})
+
+    return render_template("goals.html", goals=goals_with_progress)
 
 if __name__ == "__main__":
     app.run(debug=True)
