@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Study Heatmap</title>
+    <style>
+        .heatmap {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .heatmap-grid {
+            display: flex;
+            gap: 3px;
+            align-items: flex-start;
+        }
+        .week {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        .day {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+            background: #eee;
+        }
+        .day[data-level="1"] { background: #c6e48b; }
+        .day[data-level="2"] { background: #7bc96f; }
+        .day[data-level="3"] { background: #239a3b; }
+        .day[data-level="4"] { background: #196127; }
+
+        .tooltip {
+            position: fixed;
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Study Heatmap</h1>
+    <p>Last 365 days of study activity.</p>
+
+    <div class="heatmap-grid" id="heatmap"></div>
+    <div class="tooltip" id="tooltip"></div>
+
+    <br>
+    <div>
+        <strong>Less</strong>
+        <span class="day" style="display:inline-block; background:#eee;"></span>
+        <span class="day" style="display:inline-block; background:#c6e48b;"></span>
+        <span class="day" style="display:inline-block; background:#7bc96f;"></span>
+        <span class="day" style="display:inline-block; background:#239a3b;"></span>
+        <span class="day" style="display:inline-block; background:#196127;"></span>
+        <strong>More</strong>
+    </div>
+
+    <br>
+    <a href="/">Back to dashboard</a>
+
+    <script>
+        const days = {{ days | safe }};
+        const heatmap = document.getElementById("heatmap");
+        const tooltip = document.getElementById("tooltip");
+
+        function getLevel(minutes) {
+            if (minutes === 0) return 0;
+            if (minutes < 30) return 1;
+            if (minutes < 60) return 2;
+            if (minutes < 120) return 3;
+            return 4;
+        }
+
+        // Group days into weeks
+        let week = [];
+        let weeks = [];
+
+        // Pad the first week with empty days
+        const firstWeekday = new Date(days[0].date).getDay(); // 0 = Sunday
+        for (let i = 0; i < firstWeekday; i++) {
+            week.push(null);
+        }
+
+        for (const day of days) {
+            week.push(day);
+            if (week.length === 7) {
+                weeks.push(week);
+                week = [];
+            }
+        }
+        if (week.length > 0) weeks.push(week);
+
+        // Render
+        for (const week of weeks) {
+            const weekEl = document.createElement("div");
+            weekEl.className = "week";
+
+            for (const day of week) {
+                const cell = document.createElement("div");
+                cell.className = "day";
+
+                if (day) {
+                    cell.setAttribute("data-level", getLevel(day.minutes));
+                    cell.setAttribute("data-date", day.date);
+                    cell.setAttribute("data-minutes", day.minutes);
+
+                    cell.addEventListener("mousemove", (e) => {
+                        const mins = day.minutes;
+                        const hrs = (mins / 60).toFixed(1);
+                        tooltip.style.display = "block";
+                        tooltip.style.left = e.clientX + 10 + "px";
+                        tooltip.style.top = e.clientY + 10 + "px";
+                        tooltip.textContent = mins > 0
+                            ? `${day.date}: ${hrs} hrs studied`
+                            : `${day.date}: No study`;
+                    });
+
+                    cell.addEventListener("mouseleave", () => {
+                        tooltip.style.display = "none";
+                    });
+                } else {
+                    cell.style.background = "transparent";
+                }
+
+                weekEl.appendChild(cell);
+            }
+
+            heatmap.appendChild(weekEl);
+        }
+    </script>
+</body>
+</html>

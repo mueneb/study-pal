@@ -1,5 +1,7 @@
 from flask import Flask, render_template, redirect, request, url_for
-from database import init_db, get_db, get_stats, get_user_stats, add_xp, get_xp_progress, check_achievements, buy_streak_freeze, get_goal_progress
+from database import init_db, get_db, get_stats, get_user_stats, add_xp, get_xp_progress, check_achievements, buy_streak_freeze, get_goal_progress, get_heatmap_data
+import json
+from datetime import datetime, timedelta, date
 
 app = Flask(__name__)
 
@@ -125,6 +127,24 @@ def goals():
         goals_with_progress.append({"goal": goal, "progress": progress})
 
     return render_template("goals.html", goals=goals_with_progress)
+
+@app.route("/heatmap")
+def heatmap():
+    data = get_heatmap_data()
+    
+    # Build list of last 365 days
+    today = date.today()
+    days = []
+    for i in range(364, -1, -1):
+        d = today - timedelta(days=i)
+        day_str = d.strftime("%Y-%m-%d")
+        days.append({
+            "date": day_str,
+            "minutes": data.get(day_str, 0),
+            "weekday": d.weekday()  # 0 = Monday, 6 = Sunday
+        })
+
+    return render_template("heatmap.html", days=json.dumps(days))
 
 if __name__ == "__main__":
     app.run(debug=True)

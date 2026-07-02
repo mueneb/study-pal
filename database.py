@@ -367,3 +367,17 @@ def get_goal_progress(goal):
         "percentage": percentage,
         "days_remaining": days_remaining
     }
+
+def get_heatmap_data():
+    conn = get_db()
+    rows = conn.execute(
+        """SELECT DATE(created_at) as day, SUM(duration) as total
+        FROM study_sessions
+        GROUP BY DATE(created_at)
+        ORDER BY day ASC"""
+    ).fetchall()
+    conn.close()
+
+    return {row["day"]: row["total"] for row in rows}
+
+
